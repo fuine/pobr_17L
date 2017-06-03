@@ -1,4 +1,4 @@
-#include "Segmentation.hpp"
+#include "Preprocessing.hpp"
 #include "opencv2/imgproc.hpp"
 #include <iostream>
 #include <cmath>
@@ -232,7 +232,7 @@ cv::Mat preprocess(const cv::Mat& mat) {
     cv::Mat mask1(SPATIAL_FILTER_SIZE, SPATIAL_FILTER_SIZE, CV_32FC1, 0.2);
     cv::Mat mask2(SPATIAL_FILTER_SIZE, SPATIAL_FILTER_SIZE, CV_32FC1, -1);
     int center = SPATIAL_FILTER_SIZE / 2;
-    mask2.at<float>(center, center) = (SPATIAL_FILTER_SIZE * SPATIAL_FILTER_SIZE) + 1;
+    mask2.at<float>(center, center) = static_cast<float>((SPATIAL_FILTER_SIZE * SPATIAL_FILTER_SIZE) + 1);
 
     cv::Mat image = mat;
     histogram_equalization(image);
