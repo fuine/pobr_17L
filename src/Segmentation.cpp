@@ -8,6 +8,8 @@ static int BLUE_WEIGHT = 2;
 static int GREEN_WEIGHT = -2;
 static int RED_WEIGHT = -2;
 
+static int SPATIAL_FILTER_SIZE = 3;
+
 /*
  * Equalize colors' histograms for the BGR image.
  * https://en.wikipedia.org/wiki/Histogram_equalization
@@ -173,10 +175,72 @@ cv::Mat color_to_grayscale(const cv::Mat& m, int blue_weight, int green_weight, 
     return grayscale;
 }
 
-cv::Mat preprocess(const cv::Mat& m) {
-    cv::Mat _I = m;
-    histogram_equalization(_I);
-    color_enhance(_I);
-    cv::Mat grayscale = color_to_grayscale(_I, BLUE_WEIGHT, GREEN_WEIGHT, RED_WEIGHT);
+/*
+ * Create pixel by sum of element-wise multiplication of the matrix and filter.
+ */
+unsigned char multiply(const cv::Mat& mat, const cv::Mat& filter) {
+    int sum = 0;
+    int filter_size = filter.rows;
+    for (int i = 0; i < filter_size; ++i) {
+        for (int j = 0; j < filter_size; ++j){
+            sum += static_cast<int>(mat.at<uchar>(i, j) * filter.at<float>(i, j));
+        }
+    }
+    if (sum >= 256){
+        return 255;
+    }
+    else if (sum <= 0) {
+        return 0;
+    }
+    else {
+        return static_cast<unsigned char>(sum);
+    }
+}
+
+/*
+ * Apply spatial filter to the image.
+ */
+void apply_spatial_filter(cv::Mat& mat, const cv::Mat& filter) {
+    int filter_size = filter.rows;
+    cv::Mat tmp(filter_size, filter_size, CV_8UC3);
+
+    for (int i = 0; i < mat.rows - (filter_size + 1); ++i) {
+        unsigned char* g_i = mat.ptr<unsigned char>(i);
+        for (int j = 0; j < mat.cols - (filter_size + 1); ++j) {
+            cv::Mat tmp = mat(cv::Rect(j, i, filter_size, filter_size));
+            g_i[j] = multiply(tmp, filter);
+        }
+    }
+}
+
+/*
+ * Make pixels below given threshold black.
+ */
+void threshold(cv::Mat& mat, int threshold) {
+    for (int i = 0; i < mat.rows; ++i) {
+        unsigned char* g_i = mat.ptr<unsigned char>(i);
+        for (int j = 0; j < mat.cols; ++j) {
+            if (g_i[j] <= threshold) {
+                g_i[j] = 0;
+            }
+        }
+    }
+}
+
+
+cv::Mat preprocess(const cv::Mat& mat) {
+    cv::Mat mask1(SPATIAL_FILTER_SIZE, SPATIAL_FILTER_SIZE, CV_32FC1, 0.2);
+    cv::Mat mask2(SPATIAL_FILTER_SIZE, SPATIAL_FILTER_SIZE, CV_32FC1, -1);
+    int center = SPATIAL_FILTER_SIZE / 2;
+    mask2.at<float>(center, center) = (SPATIAL_FILTER_SIZE * SPATIAL_FILTER_SIZE) + 1;
+
+    cv::Mat image = mat;
+    histogram_equalization(image);
+    color_enhance(image);
+    cv::Mat grayscale = color_to_grayscale(image, BLUE_WEIGHT, GREEN_WEIGHT, RED_WEIGHT);
+    apply_spatial_filter(grayscale, mask1);
+    threshold(grayscale, 50);
+    apply_spatial_filter(grayscale, mask2);
+    threshold(grayscale, 150);
     return grayscale;
 }
