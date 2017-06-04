@@ -4,7 +4,8 @@
 #include "opencv2/core/core.hpp"
 #include <vector>
 
-typedef std::vector<cv::Rect> Segments;
+typedef std::pair<cv::Rect, unsigned> Segment;
+typedef std::vector<Segment> Segments;
 
 /*
  * Naïve implementation of square-based segmentation for grayscale images.

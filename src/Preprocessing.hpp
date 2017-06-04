@@ -3,6 +3,6 @@
 
 #include "opencv2/core/core.hpp"
 
-cv::Mat preprocess(const cv::Mat& m);
+cv::Mat preprocess(const cv::Mat& mat);
 
 #endif /* ifndef PREPROCESSING_HPP */

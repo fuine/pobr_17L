@@ -55,7 +55,7 @@ cv::Point next_clockwise_pixel(cv::Point p, cv::Point b) {
  *
  * https://www.youtube.com/watch?v=UwY98217hFE
  */
-cv::Rect get_bounding_box_moore(const cv::Mat& mat, cv::Point b, cv::Point s) {
+Segment get_bounding_box_moore(const cv::Mat& mat, cv::Point b, cv::Point s) {
     cv::Point box_start(s.x - 1, s.y - 1);
     cv::Point box_end(s.x, s.y);
     // Set the current boundary point p to s i.e. p=s
@@ -68,9 +68,13 @@ cv::Rect get_bounding_box_moore(const cv::Mat& mat, cv::Point b, cv::Point s) {
     // This point is used by the Eliosoff's termination condition
     cv::Point initial_b = b;
     unsigned visited_starting_point = 0;
+    unsigned perimeter_length = 0;
     while (visited_starting_point != 2) {
         // If c is white
         if (mat.at<unsigned char>(c) != 0) {
+            if (visited_starting_point == 1) {
+                ++perimeter_length;
+            }
             // update start and endpoint of the bounding box for the segment
             if (c.x - 1 < box_start.x) {
                 box_start.x = c.x - 1;
@@ -109,11 +113,11 @@ cv::Rect get_bounding_box_moore(const cv::Mat& mat, cv::Point b, cv::Point s) {
             }
         }
     }
-    return cv::Rect(box_start, box_end);
+    return std::make_pair(cv::Rect(box_start, box_end), perimeter_length);
 }
 
 Segments segmentation(const cv::Mat& mat, double size_percentage_threshold) {
-    Segments s;
+    Segments segments;
     int minimum_size = static_cast<int>(round((mat.cols * mat.rows) * size_percentage_threshold));
     // create an artificial single-pixel black border to ensure that we always
     // have the proper backtrack point for the Moore-neighbourhood tracing
@@ -128,9 +132,10 @@ Segments segmentation(const cv::Mat& mat, double size_percentage_threshold) {
     for (int j = 1; j < bordered.cols - 1; ++j) {
         for (int i = bordered.rows - 1; i >= 0; --i) {
             if (bordered.at<unsigned char>(i, j) > 0 && seen_map.at<unsigned char>(i, j) == 0) {
-                cv::Rect r = get_bounding_box_moore(bordered, backtrack, cv::Point(j, i));
+                Segment s = get_bounding_box_moore(bordered, backtrack, cv::Point(j, i));
+                cv::Rect r = s.first;
                 if (r.width * r.height >= minimum_size) {
-                    s.push_back(r);
+                    segments.push_back(s);
                 }
                 cv::Rect seen_region(r);
                 // normalize the box for the bordered image
@@ -144,6 +149,6 @@ Segments segmentation(const cv::Mat& mat, double size_percentage_threshold) {
             backtrack.y = i;
         }
     }
-    std::cout << "Found " << s.size() << " segments" << std::endl;
-    return s;
+    std::cout << "Found " << segments.size() << " segments" << std::endl;
+    return segments;
 }

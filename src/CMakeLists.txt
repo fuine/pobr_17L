@@ -4,10 +4,11 @@ find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
 add_library(ImageRecogn
-            ImageRecogn.cpp ImageRecogn.hpp
+            ImageRecogn.hpp
             Preprocessing.cpp Preprocessing.hpp
             Segmentation.cpp Segmentation.hpp
             Moments.cpp Moments.hpp
+            Classifier.cpp Classifier.hpp
            )
 
 target_link_libraries(ImageRecogn ${OpenCV_LIBS})

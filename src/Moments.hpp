@@ -3,6 +3,7 @@
 
 #include "opencv2/core/core.hpp"
 #include <vector>
+#include "Segmentation.hpp"
 
 typedef std::vector<std::vector<double>> Moments;
 typedef std::vector<double> Invariants;
@@ -17,7 +18,7 @@ class Features {
         Invariants invariants;
         Coefficients coeffs;
 
-        Features(const cv::Mat& segment, unsigned image_id, unsigned segment_id);
+        Features(const cv::Mat& segment, unsigned perimeter, unsigned image_id, unsigned segment_id);
 
         std::string as_csv_row() const;
         std::string get_csv_header() const;
@@ -26,8 +27,10 @@ class Features {
         void calc_normal_moments(const cv::Mat& segment);
         void calc_central_moments();
         void calc_moment_invariants();
+        void calc_coefficients(unsigned S, unsigned L);
+        unsigned get_area(const cv::Mat& mat) const;
 };
 
-std::vector<Features> get_features_for_segments(const cv::Mat& image, unsigned image_id, const std::vector<cv::Rect>& segments);
+std::vector<Features> get_features_for_segments(const cv::Mat& image, unsigned image_id, const Segments& segments);
 
 #endif /* ifndef MOMENTS_HPP */

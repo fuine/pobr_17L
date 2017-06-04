@@ -234,7 +234,7 @@ cv::Mat preprocess(const cv::Mat& mat) {
     int center = SPATIAL_FILTER_SIZE / 2;
     mask2.at<float>(center, center) = static_cast<float>((SPATIAL_FILTER_SIZE * SPATIAL_FILTER_SIZE) + 1);
 
-    cv::Mat image = mat;
+    cv::Mat image = mat.clone();
     histogram_equalization(image);
     color_enhance(image);
     cv::Mat grayscale = color_to_grayscale(image, BLUE_WEIGHT, GREEN_WEIGHT, RED_WEIGHT);
