@@ -7,6 +7,7 @@ add_library(ImageRecogn
             ImageRecogn.cpp ImageRecogn.hpp
             Preprocessing.cpp Preprocessing.hpp
             Segmentation.cpp Segmentation.hpp
+            Moments.cpp Moments.hpp
            )
 
 target_link_libraries(ImageRecogn ${OpenCV_LIBS})

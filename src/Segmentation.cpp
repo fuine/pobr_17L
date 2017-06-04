@@ -115,7 +115,6 @@ cv::Rect get_bounding_box_moore(const cv::Mat& mat, cv::Point b, cv::Point s) {
 Segments segmentation(const cv::Mat& mat, double size_percentage_threshold) {
     Segments s;
     int minimum_size = static_cast<int>(round((mat.cols * mat.rows) * size_percentage_threshold));
-    std::cout << "Total size: " << (mat.cols * mat.rows) << " minimum_size " << minimum_size << std::endl;
     // create an artificial single-pixel black border to ensure that we always
     // have the proper backtrack point for the Moore-neighbourhood tracing
     // algorithm.
