@@ -4,7 +4,15 @@
 #include "opencv2/core/core.hpp"
 #include <vector>
 
+/*
+ * A single segment, represented by its bounding box and length of the perimeter
+ * in pixels
+ */
 typedef std::pair<cv::Rect, unsigned> Segment;
+
+/*
+ * Collection of segments
+ */
 typedef std::vector<Segment> Segments;
 
 /*

@@ -1,9 +1,10 @@
 #include "Features.hpp"
 #include <sstream>
 
+/*
+ * Calculate normal moments for the given segment
+ */
 void Features::calc_normal_moments(const cv::Mat& segment) {
-    // normal moments
-    // Moments m = {{0., 0., 0.},{0., 0., 0.},{0., 0., 0.}};
     Moments m(4, std::vector<double>(4, 0.));
     for (int i = 0; i < segment.rows; ++i) {
         const unsigned char* g_i = segment.ptr<unsigned char>(i);
@@ -20,8 +21,9 @@ void Features::calc_normal_moments(const cv::Mat& segment) {
     this->normal_moments = m;
 }
 
-
-
+/*
+ * Calculate central moments based on the normal moments for the segment
+ */
 void Features::calc_central_moments() {
     Moments M(4, std::vector<double>(4, 0.));
     Moments m = this->normal_moments;
@@ -41,6 +43,9 @@ void Features::calc_central_moments() {
     this->central_moments = M;
 }
 
+/*
+ * Calculate moment invariants based on the normal and central moments of the segment
+ */
 void Features::calc_moment_invariants() {
     Invariants I(11, 0.);
     Moments& m = this->normal_moments;
@@ -70,6 +75,9 @@ void Features::calc_moment_invariants() {
     this->invariants = I;
 }
 
+/*
+ * Calculate area of the segment
+ */
 unsigned Features::get_area(const cv::Mat& mat) const {
     unsigned area = 0;
     for (int i = 0; i < mat.rows; ++i) {
@@ -83,6 +91,9 @@ unsigned Features::get_area(const cv::Mat& mat) const {
     return area;
 }
 
+/*
+ * Calculate various coefficients for the segment
+ */
 void Features::calc_coefficients(unsigned S, unsigned L) {
     // 0, 1: circularity coefficients
     // 2: Malinowska's coefficient
@@ -99,24 +110,9 @@ void Features::calc_coefficients(unsigned S, unsigned L) {
     this->coeffs = c;
 }
 
-// std::pair<double, double> get_i_j(const cv::Mat& m){
-    // double m01 = 0;
-    // double m10 = 0;
-    // double m00 = 0;
-
-    // cv::Mat_<cv::Vec3b> _I = m;
-    // for (int i = 0; i < _I.rows; ++i) {
-        // for (int j = 0; j < _I.cols; ++j) {
-            // if (_I(i, j)[0] == 0) {
-                // m00 += 1;
-                // m01 += j;
-                // m10 += i;
-            // }
-        // }
-    // }
-    // return std::make_pair(m10 / m00, m01 / m00);
-// }
-
+/*
+ * C-tor for Features, calculates all possible features
+ */
 Features::Features(const cv::Mat& segment, unsigned perimeter, unsigned image_id, unsigned segment_id) {
     this->segment_id = segment_id;
     this->image_id = image_id;
@@ -126,6 +122,9 @@ Features::Features(const cv::Mat& segment, unsigned perimeter, unsigned image_id
     this->calc_coefficients(area, perimeter);
 }
 
+/*
+ * Create header for the csv representation of the features
+ */
 std::string Features::get_csv_header() const {
     std::stringstream ss;
     ss << "id,";
@@ -148,13 +147,16 @@ std::string Features::get_csv_header() const {
     for (size_t i = 0; i < coeffs.size(); ++i) {
         ss << "coeff" << i << ",";
     }
-    ss << "is_logo,is_c";
+
     std::string s = ss.str();
     // remove the last comma
-    // s.pop_back();
+    s.pop_back();
     return s;
 }
 
+/*
+ * Create csv representation of the calculated features
+ */
 std::string Features::as_csv_row() const {
     std::stringstream ss;
     ss << this->image_id << "_" << this->segment_id << ",";
@@ -179,13 +181,15 @@ std::string Features::as_csv_row() const {
         ss << i << ",";
     }
 
-    ss << 0 << "," << 0;
     std::string s = ss.str();
     // remove the last comma
-    // s.pop_back();
+    s.pop_back();
     return s;
 }
 
+/*
+ * Get features for each segment in the collection
+ */
 std::vector<Features> get_features_for_segments(const cv::Mat& image, unsigned image_id, const Segments& segments) {
     std::vector<Features> f;
     unsigned id = 0;

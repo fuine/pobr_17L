@@ -8,6 +8,7 @@ static int BLUE_WEIGHT = 2;
 static int GREEN_WEIGHT = -2;
 static int RED_WEIGHT = -2;
 
+// size of the spatial filters
 static int SPATIAL_FILTER_SIZE = 3;
 
 /*
@@ -227,7 +228,9 @@ void threshold(cv::Mat& mat, int threshold) {
     }
 }
 
-
+/*
+ * Convert BGR image to its thresholded grayscale representation
+ */
 cv::Mat preprocess(const cv::Mat& mat) {
     cv::Mat mask1(SPATIAL_FILTER_SIZE, SPATIAL_FILTER_SIZE, CV_32FC1, 0.2);
     cv::Mat mask2(SPATIAL_FILTER_SIZE, SPATIAL_FILTER_SIZE, CV_32FC1, -1);

@@ -116,6 +116,11 @@ Segment get_bounding_box_moore(const cv::Mat& mat, cv::Point b, cv::Point s) {
     return std::make_pair(cv::Rect(box_start, box_end), perimeter_length);
 }
 
+/*
+ * Naïve implementation of square-based segmentation for grayscale images.
+ * size_percentage_threshold allows for filtering of the small segments, which
+ * area is lesser than the given percentage of the whole image.
+ */
 Segments segmentation(const cv::Mat& mat, double size_percentage_threshold) {
     Segments segments;
     int minimum_size = static_cast<int>(round((mat.cols * mat.rows) * size_percentage_threshold));
@@ -149,6 +154,5 @@ Segments segmentation(const cv::Mat& mat, double size_percentage_threshold) {
             backtrack.y = i;
         }
     }
-    std::cout << "Found " << segments.size() << " segments" << std::endl;
     return segments;
 }
