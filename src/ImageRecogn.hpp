@@ -3,7 +3,7 @@
 
 #include "Preprocessing.hpp"
 #include "Segmentation.hpp"
-#include "Moments.hpp"
+#include "Features.hpp"
 #include "Classifier.hpp"
 
 #endif /* ifndef IMAGERECOGN_HPP */

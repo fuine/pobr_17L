@@ -7,7 +7,7 @@ add_library(ImageRecogn
             ImageRecogn.hpp
             Preprocessing.cpp Preprocessing.hpp
             Segmentation.cpp Segmentation.hpp
-            Moments.cpp Moments.hpp
+            Features.cpp Features.hpp
             Classifier.cpp Classifier.hpp
            )
 

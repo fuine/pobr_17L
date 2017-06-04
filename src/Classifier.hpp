@@ -1,6 +1,6 @@
 #ifndef CLASSIFIER_HPP
 #define CLASSIFIER_HPP
-#include "Moments.hpp"
+#include "Features.hpp"
 
 /*
  * Classify segment based on its features -- returns true if segment is either a

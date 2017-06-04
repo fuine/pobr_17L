@@ -1,5 +1,5 @@
-#ifndef MOMENTS_HPP
-#define MOMENTS_HPP
+#ifndef FEATURES_HPP
+#define FEATURES_HPP
 
 #include "opencv2/core/core.hpp"
 #include <vector>
@@ -33,4 +33,4 @@ class Features {
 
 std::vector<Features> get_features_for_segments(const cv::Mat& image, unsigned image_id, const Segments& segments);
 
-#endif /* ifndef MOMENTS_HPP */
+#endif /* ifndef FEATURES_HPP */
