@@ -1,8 +1,10 @@
 #ifndef FEATURES_HPP
 #define FEATURES_HPP
 
-#include "opencv2/core/core.hpp"
 #include <vector>
+
+#include "opencv2/core/core.hpp"
+
 #include "Segmentation.hpp"
 
 typedef std::vector<std::vector<double>> Moments;

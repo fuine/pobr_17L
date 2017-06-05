@@ -1,7 +1,8 @@
-#include "Preprocessing.hpp"
-#include "opencv2/imgproc.hpp"
-#include <iostream>
 #include <cmath>
+
+#include "opencv2/imgproc.hpp"
+
+#include "Preprocessing.hpp"
 
 // channel weights used in the grayscale transform
 static int BLUE_WEIGHT = 2;

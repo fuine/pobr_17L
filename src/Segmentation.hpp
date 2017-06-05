@@ -1,8 +1,9 @@
 #ifndef SEGMENTATION_HPP
 #define SEGMENTATION_HPP
 
-#include "opencv2/core/core.hpp"
 #include <vector>
+
+#include "opencv2/core/core.hpp"
 
 /*
  * A single segment, represented by its bounding box and length of the perimeter
