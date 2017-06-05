@@ -1,7 +1,6 @@
-#include "Segmentation.hpp"
 #include "opencv2/core/core.hpp"
-#include "opencv2/imgproc.hpp"
-#include <iostream>
+
+#include "Segmentation.hpp"
 
 /*
  * Get the next clockwise pixel, starting from point b in the Moore neighbourhood
@@ -117,6 +116,18 @@ Segment get_bounding_box_moore(const cv::Mat& mat, cv::Point b, cv::Point s) {
 }
 
 /*
+ * Draw a rectangle on the mat. This function is equivalent to this call:
+ * cv::rectangle(mat, r, cv::Scalar(255), CV_FILLED, 8, 0);
+ */
+void draw_rectangle(cv::Mat& mat, const cv::Rect& r) {
+    for(int i = r.y; i < r.y + r.height ; ++i) {
+        unsigned char* g_i = mat.ptr<unsigned char>(i);
+        g_i += r.x;
+        memset(g_i, 255, r.width);
+    }
+}
+
+/*
  * Naïve implementation of square-based segmentation for grayscale images.
  * size_percentage_threshold allows for filtering of the small segments, which
  * area is lesser than the given percentage of the whole image.
@@ -147,7 +158,7 @@ Segments segmentation(const cv::Mat& mat, double size_percentage_threshold) {
                 ++seen_region.height;
                 ++seen_region.width;
                 // mark the region as segmented
-                cv::rectangle(seen_map, seen_region, cv::Scalar(255), CV_FILLED, 8, 0);
+                draw_rectangle(seen_map, seen_region);
                 i -= (r.height);
             }
             backtrack.x = j;
