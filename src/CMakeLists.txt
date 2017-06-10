@@ -5,8 +5,8 @@ include_directories( ${OpenCV_INCLUDE_DIRS} )
 
 add_library(ImageRecogn
             ImageRecogn.hpp
-            Preprocessing.cpp Preprocessing.hpp
             Segmentation.cpp Segmentation.hpp
+            ContourRecognition.cpp ContourRecognition.hpp
             Features.cpp Features.hpp
             Classifier.cpp Classifier.hpp
            )

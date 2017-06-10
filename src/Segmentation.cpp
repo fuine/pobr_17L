@@ -1,169 +1,250 @@
-#include "opencv2/core/core.hpp"
+#include <cmath>
+
+#include "opencv2/imgproc.hpp"
 
 #include "Segmentation.hpp"
 
+// channel weights used in the grayscale transform
+static int BLUE_WEIGHT = 2;
+static int GREEN_WEIGHT = -2;
+static int RED_WEIGHT = -2;
+
+// size of the spatial filters
+static int SPATIAL_FILTER_SIZE = 3;
+
 /*
- * Get the next clockwise pixel, starting from point b in the Moore neighbourhood
- * of the point p -- M(p)
+ * Equalize colors' histograms for the BGR image.
+ * https://en.wikipedia.org/wiki/Histogram_equalization
  */
-cv::Point next_clockwise_pixel(cv::Point p, cv::Point b) {
-    // lookup table for the clockwise choice of the next pixel
-    // first index -- 0: north 1: same level 2: south
-    // second index -- 0: west 1: same level 2: east
-    // third index -- 0: x offset for the new point 1: y offset
-    int lut_clockwise[3][3][2] = {
-        {
-            // 0, 0 <-> NW -> N
-            {0, -1},
-            // 0, 1 <-> N -> NE
-            {1, -1},
-            // 0, 2 <-> NE -> E
-            {1, 0},
-        },
-        {
-            // 1, 0 <-> W -> NW
-            {-1, -1},
-            // 1, 1 <-> NOP
-            {0, 0},
-            // 1, 2 <-> E -> SE
-            {1, 1},
-        },
-        {
-            // 2, 0 <-> SW -> W
-            {-1, 0},
-            // 2, 1 <-> S -> SW
-            {-1, 1},
-            // 2, 2 <-> SE -> S
-            {0, 1},
-        },
-    };
-    // calculate differences between b and p
-    int diff_rows = (b.x - p.x) + 1;
-    int diff_cols = (b.y - p.y) + 1;
-    // this should never happen
-    assert(diff_rows != 1 || diff_cols != 1);
-    // get offsets for the next clockwise pixels based on the relative position
-    // of b with respect to p
-    int* d = lut_clockwise[diff_cols][diff_rows];
-    return cv::Point(p.x + d[0], p.y + d[1]);
+void histogram_equalization(cv::Mat& m) {
+    // calculate histograms
+    double histograms[3][256] = {{0.}, {0.}, {0.}};
+    for(int i = 0; i < m.rows; ++i) {
+        cv::Vec3b* m_i = m.ptr<cv::Vec3b>(i);
+        for(int j = 0; j < m.cols; ++j) {
+            cv::Vec3b& m_ij = m_i[j];
+            ++histograms[0][m_ij[0]];
+            ++histograms[1][m_ij[1]];
+            ++histograms[2][m_ij[2]];
+        }
+    }
+
+    // normalize histograms
+    double total = static_cast<double>(m.rows * m.cols);
+    histograms[0][0] /= total;
+    histograms[1][0] /= total;
+    histograms[2][0] /= total;
+    for(int i = 0; i < 3; ++i) {
+        double prev = histograms[i][0];
+        for(int j = 1; j < 256; ++j) {
+            prev = (histograms[i][j] / total) + prev;
+            histograms[i][j] = prev;
+        }
+    }
+
+    // modify the original image
+    for(int i = 0; i < m.rows; ++i) {
+        cv::Vec3b* m_i = m.ptr<cv::Vec3b>(i);
+        for(int j = 0; j < m.cols; ++j) {
+            cv::Vec3b& m_ij = m_i[j];
+            m_ij[0] = static_cast<unsigned char>(floor(255 * histograms[0][m_ij[0]]));
+            m_ij[1] = static_cast<unsigned char>(floor(255 * histograms[1][m_ij[1]]));
+            m_ij[2] = static_cast<unsigned char>(floor(255 * histograms[2][m_ij[2]]));
+        }
+    }
 }
 
 /*
- * Modified Moore-neighbourhood tracing algorithm with Jacob Eliosoff's termination condition.
- * Used to create a rectangle on the segment via contour tracing.
- *
- * https://www.youtube.com/watch?v=UwY98217hFE
+ * Enhance color values by stretching them in the HSV space.
+ * See https://git.gnome.org/browse/gimp/tree/plug-ins/common/color-enhance.c for more informations.
  */
-Segment get_bounding_box_moore(const cv::Mat& mat, cv::Point b, cv::Point s) {
-    cv::Point box_start(s.x - 1, s.y - 1);
-    cv::Point box_end(s.x, s.y);
-    // Set the current boundary point p to s i.e. p=s
-    cv::Point p = s;
-    // Let b = the pixel from which s was entered during the image scan.
-    // Set c to be the next clockwise pixel (from b) in M(p).
-    cv::Point c = next_clockwise_pixel(p, b);
-    // Helper point, which is used to test for single-pixel segments
-    cv::Point first_white = b;
-    // This point is used by the Eliosoff's termination condition
-    cv::Point initial_b = b;
-    unsigned visited_starting_point = 0;
-    unsigned perimeter_length = 0;
-    while (visited_starting_point != 2) {
-        // If c is white
-        if (mat.at<unsigned char>(c) != 0) {
-            if (visited_starting_point == 1) {
-                ++perimeter_length;
+void color_enhance(cv::Mat& mat) {
+    cv::Mat tmp_mat = mat;
+    unsigned c;
+    unsigned y;
+    unsigned m;
+    unsigned k;
+    std::vector<unsigned> ks(mat.rows*mat.cols);
+
+    // convert to HSV
+    for(int i = 0; i < tmp_mat.rows; ++i) {
+        cv::Vec3b* m_i = tmp_mat.ptr<cv::Vec3b>(i);
+        for(int j = 0; j < tmp_mat.cols; ++j) {
+            cv::Vec3b& m_ij = m_i[j];
+            c = 255 - m_ij[0];
+            m = 255 - m_ij[1];
+            y = 255 - m_ij[2];
+
+            k = c;
+            if (m < k) {
+                k = m;
             }
-            // update start and endpoint of the bounding box for the segment
-            if (c.x - 1 < box_start.x) {
-                box_start.x = c.x - 1;
+            if (y < k) {
+                k = y;
             }
-            else if (c.x > box_end.x) {
-                box_end.x = c.x;
-            }
-            if (c.y - 1 < box_start.y) {
-                box_start.y = c.y - 1;
-            }
-            else if (c.y > box_end.y) {
-                box_end.y = c.y;
-            }
-            b = p;
-            p = c;
-            // backtrack: move the current pixel c to the pixel from which p was entered
-            c = next_clockwise_pixel(p, b);
-            first_white = c;
+            m_ij[0] = static_cast<unsigned char>(c - k);
+            m_ij[1] = static_cast<unsigned char>(m - k);
+            m_ij[2] = static_cast<unsigned char>(y - k);
+            ks[mat.cols*i + j] = k;
         }
-        else {
-            // advance the current pixel c to the next clockwise pixel in M(p) and update backtrack
-            b = c;
-            c = next_clockwise_pixel(p, b);
-            // we hit the single-pixel segment
-            if (first_white == c) {
-                break;
+    }
+
+    cv::cvtColor(tmp_mat, tmp_mat, CV_BGR2HSV);
+    unsigned vhi = 0;
+    unsigned vlo = 255;
+
+    // find vhi and vlo
+    for(int i = 0; i < tmp_mat.rows; ++i) {
+        cv::Vec3b* m_i = tmp_mat.ptr<cv::Vec3b>(i);
+        for(int j = 0; j < tmp_mat.cols; ++j) {
+            cv::Vec3b& m_ij = m_i[j];
+            if (m_ij[2] > vhi) {
+                vhi = m_ij[2];
             }
-        }
-        if (c == s) {
-            if (visited_starting_point == 0) {
-                ++visited_starting_point;
-                initial_b = b;
-            }
-            else if (b == initial_b) {
-                ++visited_starting_point;
+            if (m_ij[2] < vlo) {
+                vlo = m_ij[2];
             }
         }
     }
-    return std::make_pair(cv::Rect(box_start, box_end), perimeter_length);
+
+    // enhance image
+    if (vhi == vlo) {
+        return;
+    }
+
+    for(int i = 0; i < tmp_mat.rows; ++i) {
+        cv::Vec3b* m_i = tmp_mat.ptr<cv::Vec3b>(i);
+        for(int j = 0; j < tmp_mat.cols; ++j) {
+            cv::Vec3b& m_ij = m_i[j];
+            // this will never overflow/underflow
+            m_ij[2] = static_cast<unsigned char>(((m_ij[2] - vlo) * 255) / (vhi - vlo));
+        }
+    }
+
+    // Convert back to BGR
+    cv::cvtColor(tmp_mat, tmp_mat, CV_HSV2BGR);
+    for(int i = 0; i < tmp_mat.rows; ++i) {
+        cv::Vec3b* m_i = tmp_mat.ptr<cv::Vec3b>(i);
+        for(int j = 0; j < tmp_mat.cols; ++j) {
+            cv::Vec3b& m_ij = m_i[j];
+            c = m_ij[0];
+            m = m_ij[1];
+            y = m_ij[2];
+            k = ks[mat.cols*i + j];
+
+            c += k;
+            if (c > 255) {
+                c = 255;
+            }
+            m += k;
+            if (m > 255) {
+                m = 255;
+            }
+            y += k;
+            if (y > 255) {
+                y = 255;
+            }
+
+            m_ij[0] = static_cast<unsigned char>(255 - c);
+            m_ij[1] = static_cast<unsigned char>(255 - m);
+            m_ij[2] = static_cast<unsigned char>(255 - y);
+        }
+    }
+    mat = tmp_mat;
 }
 
 /*
- * Draw a rectangle on the mat. This function is equivalent to this call:
- * cv::rectangle(mat, r, cv::Scalar(255), CV_FILLED, 8, 0);
+ * Transform colored image in BGR to grayscale, using specified weights
  */
-void draw_rectangle(cv::Mat& mat, const cv::Rect& r) {
-    for(int i = r.y; i < r.y + r.height ; ++i) {
+cv::Mat color_to_grayscale(const cv::Mat& m, int blue_weight, int green_weight, int red_weight) {
+    cv::Mat grayscale(m.rows, m.cols, CV_8UC1);
+    int gray_pixel;
+    for(int i = 0; i < m.rows; ++i) {
+        const cv::Vec3b* m_i = m.ptr<cv::Vec3b>(i);
+        unsigned char* g_i = grayscale.ptr<unsigned char>(i);
+        for(int j = 0; j < m.cols; ++j) {
+            const cv::Vec3b& m_ij = m_i[j];
+            gray_pixel = (m_ij[0] * blue_weight) + (m_ij[1] * green_weight) + (m_ij[2] * red_weight);
+            if (gray_pixel >= 256) {
+                gray_pixel = 255;
+            }
+            else if (gray_pixel < 0) {
+                gray_pixel = 0;
+            }
+            g_i[j] = static_cast<unsigned char>(gray_pixel);
+        }
+    }
+    return grayscale;
+}
+
+/*
+ * Create pixel by sum of element-wise multiplication of the matrix and filter.
+ */
+unsigned char multiply(const cv::Mat& mat, const cv::Mat& filter) {
+    int sum = 0;
+    int filter_size = filter.rows;
+    for (int i = 0; i < filter_size; ++i) {
+        for (int j = 0; j < filter_size; ++j){
+            sum += static_cast<int>(mat.at<uchar>(i, j) * filter.at<float>(i, j));
+        }
+    }
+    if (sum >= 256){
+        return 255;
+    }
+    else if (sum <= 0) {
+        return 0;
+    }
+    else {
+        return static_cast<unsigned char>(sum);
+    }
+}
+
+/*
+ * Apply spatial filter to the image.
+ */
+void apply_spatial_filter(cv::Mat& mat, const cv::Mat& filter) {
+    int filter_size = filter.rows;
+    cv::Mat tmp(filter_size, filter_size, CV_8UC3);
+
+    for (int i = 0; i < mat.rows - (filter_size + 1); ++i) {
         unsigned char* g_i = mat.ptr<unsigned char>(i);
-        g_i += r.x;
-        memset(g_i, 255, r.width);
+        for (int j = 0; j < mat.cols - (filter_size + 1); ++j) {
+            cv::Mat tmp = mat(cv::Rect(j, i, filter_size, filter_size));
+            g_i[j] = multiply(tmp, filter);
+        }
     }
 }
 
 /*
- * Naïve implementation of square-based segmentation for grayscale images.
- * size_percentage_threshold allows for filtering of the small segments, which
- * area is lesser than the given percentage of the whole image.
+ * Make pixels below given threshold black.
  */
-Segments segmentation(const cv::Mat& mat, double size_percentage_threshold) {
-    Segments segments;
-    int minimum_size = static_cast<int>(round((mat.cols * mat.rows) * size_percentage_threshold));
-    // create an artificial single-pixel black border to ensure that we always
-    // have the proper backtrack point for the Moore-neighbourhood tracing
-    // algorithm.
-    cv::Mat bordered;
-    cv::copyMakeBorder(mat, bordered, 1, 1, 1, 1, cv::BORDER_CONSTANT, cv::Scalar(0));
-    // map which tracks the pixels that have already been segmented
-    cv::Mat seen_map = cv::Mat::zeros(bordered.rows, bordered.cols, CV_8UC1);
-    cv::Point backtrack(1, bordered.rows - 1);
-    // scan the image from the south-west corner of the image, moving rows
-    // first south to north, columns second west to east
-    for (int j = 1; j < bordered.cols - 1; ++j) {
-        for (int i = bordered.rows - 1; i >= 0; --i) {
-            if (bordered.at<unsigned char>(i, j) > 0 && seen_map.at<unsigned char>(i, j) == 0) {
-                Segment s = get_bounding_box_moore(bordered, backtrack, cv::Point(j, i));
-                cv::Rect r = s.first;
-                if (r.width * r.height >= minimum_size) {
-                    segments.push_back(s);
-                }
-                cv::Rect seen_region(r);
-                // normalize the box for the bordered image
-                ++seen_region.height;
-                ++seen_region.width;
-                // mark the region as segmented
-                draw_rectangle(seen_map, seen_region);
-                i -= (r.height);
+void threshold(cv::Mat& mat, int threshold) {
+    for (int i = 0; i < mat.rows; ++i) {
+        unsigned char* g_i = mat.ptr<unsigned char>(i);
+        for (int j = 0; j < mat.cols; ++j) {
+            if (g_i[j] <= threshold) {
+                g_i[j] = 0;
             }
-            backtrack.x = j;
-            backtrack.y = i;
         }
     }
-    return segments;
+}
+
+/*
+ * Convert BGR image to its thresholded grayscale representation
+ */
+cv::Mat segmentation(const cv::Mat& mat) {
+    cv::Mat mask1(SPATIAL_FILTER_SIZE, SPATIAL_FILTER_SIZE, CV_32FC1, 0.2);
+    cv::Mat mask2(SPATIAL_FILTER_SIZE, SPATIAL_FILTER_SIZE, CV_32FC1, -1);
+    int center = SPATIAL_FILTER_SIZE / 2;
+    mask2.at<float>(center, center) = static_cast<float>((SPATIAL_FILTER_SIZE * SPATIAL_FILTER_SIZE) + 1);
+
+    cv::Mat image = mat.clone();
+    histogram_equalization(image);
+    color_enhance(image);
+    cv::Mat grayscale = color_to_grayscale(image, BLUE_WEIGHT, GREEN_WEIGHT, RED_WEIGHT);
+    apply_spatial_filter(grayscale, mask1);
+    threshold(grayscale, 50);
+    apply_spatial_filter(grayscale, mask2);
+    threshold(grayscale, 150);
+    return grayscale;
 }

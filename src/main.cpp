@@ -30,9 +30,9 @@ int main(int argc, char *argv[]) {
     }
 
     // preprocess the image into the grayscale thresholded version
-    cv::Mat converted = preprocess(image);
-    // find all segments in the image
-    Segments s = segmentation(converted);
+    cv::Mat converted = segmentation(image);
+    // find all contours in the image
+    Contours s = contour_recognition(converted);
 
     unsigned image_id = static_cast<unsigned>(round(1000000 * rand()));
 
@@ -45,8 +45,8 @@ int main(int argc, char *argv[]) {
     bool positively_classified = false;
 
     if (s.size() > 0) {
-        // calculate features for each segment
-        std::vector<Features> fs = get_features_for_segments(converted, image_id, s);
+        // calculate features for each contour
+        std::vector<Features> fs = get_features_for_contours(converted, image_id, s);
 
         if (save_features_to_file) {
             std::ofstream myfile;
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
         }
 
         for (size_t i = 0; i < s.size(); ++i) {
-            // classify segment
+            // classify contour
             bool classification = classify(fs[i]);
             positively_classified |= classification;
 
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
                 int y = r.y + r.height - 7;
                 cv::putText(image, t, cv::Point(x, y), cv::FONT_HERSHEY_PLAIN, 2, color, 2);
             }
-            // print only segments classified as logo
+            // print only contours classified as logo
             else if (color == GREEN) {
                 cv::rectangle(
                         image,

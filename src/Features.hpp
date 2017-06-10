@@ -5,7 +5,7 @@
 
 #include "opencv2/core/core.hpp"
 
-#include "Segmentation.hpp"
+#include "ContourRecognition.hpp"
 
 typedef std::vector<std::vector<double>> Moments;
 typedef std::vector<double> Invariants;
@@ -18,9 +18,9 @@ class Features {
          */
         unsigned image_id;
         /*
-         * ID of the segment
+         * ID of the contour
          */
-        unsigned segment_id;
+        unsigned contour_id;
         /*
          * Normal moments M_{p,q}, where p and q in [0,3]
          */
@@ -44,7 +44,7 @@ class Features {
         /*
          * C-tor for Features, calculates all possible features
          */
-        Features(const cv::Mat& segment, unsigned perimeter, unsigned image_id, unsigned segment_id);
+        Features(const cv::Mat& contour, unsigned perimeter, unsigned image_id, unsigned contour_id);
 
         /*
          * Create csv representation of the calculated features
@@ -61,30 +61,30 @@ class Features {
          */
         Features() = delete;
         /*
-         * Calculate normal moments for the given segment
+         * Calculate normal moments for the given contour
          */
-        void calc_normal_moments(const cv::Mat& segment);
+        void calc_normal_moments(const cv::Mat& contour);
         /*
-         * Calculate central moments based on the normal moments for the segment
+         * Calculate central moments based on the normal moments for the contour
          */
         void calc_central_moments();
         /*
-         * Calculate moment invariants based on the normal and central moments of the segment
+         * Calculate moment invariants based on the normal and central moments of the contour
          */
         void calc_moment_invariants();
         /*
-         * Calculate various coefficients for the segment
+         * Calculate various coefficients for the contour
          */
         void calc_coefficients(unsigned S, unsigned L);
         /*
-         * Calculate area of the segment
+         * Calculate area of the contour
          */
         unsigned get_area(const cv::Mat& mat) const;
 };
 
 /*
- * Get features for each segment in the collection
+ * Get features for each contour in the collection
  */
-std::vector<Features> get_features_for_segments(const cv::Mat& image, unsigned image_id, const Segments& segments);
+std::vector<Features> get_features_for_contours(const cv::Mat& image, unsigned image_id, const Contours& contours);
 
 #endif /* ifndef FEATURES_HPP */

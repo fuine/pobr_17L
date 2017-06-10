@@ -7,7 +7,7 @@ include_directories (${Pobr_SOURCE_DIR}/src
                      )
 add_definitions (-DBOOST_TEST_DYN_LINK)
 
-add_executable (TestSegmentation test_segmentation.cpp)
+add_executable (TestContourRecognition test_contour_recognition.cpp)
 
 add_library(test_links INTERFACE)
 target_link_libraries (test_links
@@ -18,9 +18,9 @@ target_link_libraries (test_links
         ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
         )
 
-target_link_libraries (TestSegmentation test_links)
+target_link_libraries (TestContourRecognition test_links)
 
 
-add_test (NAME TestSegmentation WORKING_DIRECTORY ${CMAKE_BINARY_DIR} COMMAND TestSegmentation)
+add_test (NAME TestContourRecognition WORKING_DIRECTORY ${CMAKE_BINARY_DIR} COMMAND TestContourRecognition)
 
 file(COPY "test_files" DESTINATION "${CMAKE_BINARY_DIR}")

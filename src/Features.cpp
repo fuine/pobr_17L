@@ -2,13 +2,13 @@
 #include <sstream>
 
 /*
- * Calculate normal moments for the given segment
+ * Calculate normal moments for the given contour
  */
-void Features::calc_normal_moments(const cv::Mat& segment) {
+void Features::calc_normal_moments(const cv::Mat& contour) {
     Moments m(4, std::vector<double>(4, 0.));
-    for (int i = 0; i < segment.rows; ++i) {
-        const unsigned char* g_i = segment.ptr<unsigned char>(i);
-        for (int j = 0; j < segment.cols; ++j) {
+    for (int i = 0; i < contour.rows; ++i) {
+        const unsigned char* g_i = contour.ptr<unsigned char>(i);
+        for (int j = 0; j < contour.cols; ++j) {
             if (g_i[j] != 0) {
                 for (int p = 0; p < 4; ++p) {
                     for (int q = 0; q < 4; ++q) {
@@ -22,7 +22,7 @@ void Features::calc_normal_moments(const cv::Mat& segment) {
 }
 
 /*
- * Calculate central moments based on the normal moments for the segment
+ * Calculate central moments based on the normal moments for the contour
  */
 void Features::calc_central_moments() {
     Moments M(4, std::vector<double>(4, 0.));
@@ -44,7 +44,8 @@ void Features::calc_central_moments() {
 }
 
 /*
- * Calculate moment invariants based on the normal and central moments of the segment
+ * Calculate moment invariants based on the normal and central moments of the
+ * contour
  */
 void Features::calc_moment_invariants() {
     Invariants I(11, 0.);
@@ -76,7 +77,7 @@ void Features::calc_moment_invariants() {
 }
 
 /*
- * Calculate area of the segment
+ * Calculate area of the contour
  */
 unsigned Features::get_area(const cv::Mat& mat) const {
     unsigned area = 0;
@@ -92,7 +93,7 @@ unsigned Features::get_area(const cv::Mat& mat) const {
 }
 
 /*
- * Calculate various coefficients for the segment
+ * Calculate various coefficients for the contour
  */
 void Features::calc_coefficients(unsigned S, unsigned L) {
     // 0, 1: circularity coefficients
@@ -113,12 +114,12 @@ void Features::calc_coefficients(unsigned S, unsigned L) {
 /*
  * C-tor for Features, calculates all possible features
  */
-Features::Features(const cv::Mat& segment, unsigned perimeter, unsigned image_id, unsigned segment_id) {
-    this->segment_id = segment_id;
+Features::Features(const cv::Mat& contour, unsigned perimeter, unsigned image_id, unsigned contour_id) {
+    this->contour_id = contour_id;
     this->image_id = image_id;
-    this->calc_normal_moments(segment);
+    this->calc_normal_moments(contour);
     this->calc_central_moments();
-    unsigned area = get_area(segment);
+    unsigned area = get_area(contour);
     this->calc_coefficients(area, perimeter);
 }
 
@@ -159,7 +160,7 @@ std::string Features::get_csv_header() const {
  */
 std::string Features::as_csv_row() const {
     std::stringstream ss;
-    ss << this->image_id << "_" << this->segment_id << ",";
+    ss << this->image_id << "_" << this->contour_id << ",";
 
     for (auto& ms : this->normal_moments) {
         for (auto& m : ms) {
@@ -188,13 +189,13 @@ std::string Features::as_csv_row() const {
 }
 
 /*
- * Get features for each segment in the collection
+ * Get features for each contour in the collection
  */
-std::vector<Features> get_features_for_segments(const cv::Mat& image, unsigned image_id, const Segments& segments) {
+std::vector<Features> get_features_for_contours(const cv::Mat& image, unsigned image_id, const Contours& contours) {
     std::vector<Features> f;
     unsigned id = 0;
-    for (auto& s : segments) {
-        // get roi from segment
+    for (auto& s : contours) {
+        // get roi from contour
         cv::Mat roi(image, s.first);
         f.push_back(Features(roi, s.second, image_id, id++));
     }
